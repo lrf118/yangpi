@@ -1,1 +1,25 @@
+//@version=4
+strategy("Simple BTC Trading Strategy", overlay=true)
 
+// Define input variables
+fastLength = input(title="Fast Length", type=input.integer, defval=10)
+slowLength = input(title="Slow Length", type=input.integer, defval=30)
+
+// Define moving averages
+fastMA = ema(close, fastLength)
+slowMA = ema(close, slowLength)
+
+// Define buy and sell signals
+buySignal = crossover(fastMA, slowMA)
+sellSignal = crossunder(fastMA, slowMA)
+
+// Buy and sell
+strategy.entry("Buy", strategy.long, when=buySignal)
+strategy.entry("Sell", strategy.short, when=sellSignal)
+
+// Set stop loss and take profit
+stoploss = input(title="Stop Loss", type=input.float, defval=0.05, step=0.01)
+takeprofit = input(title="Take Profit", type=input.float, defval=0.1, step=0.01)
+
+strategy.exit("Stop Loss", "Buy", loss=stoploss)
+strategy.exit("Take Profit", "Buy", profit=takeprofit)
