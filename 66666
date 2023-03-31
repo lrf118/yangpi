@@ -23,3 +23,50 @@ takeprofit = input(title="Take Profit", type=input.float, defval=0.1, step=0.01)
 
 strategy.exit("Stop Loss", "Buy", loss=stoploss)
 strategy.exit("Take Profit", "Buy", profit=takeprofit)
+
+# 计算RSI指标
+delta = df['close'].diff()
+gain, loss = delta.copy(), delta.copy()
+gain[gain < 0] = 0
+loss[loss > 0] = 0
+avg_gain = gain.rolling(window=14).mean()
+avg_loss = abs(loss.rolling(window=14).mean())
+rs = avg_gain / avg_loss
+rsi = 100 - (100 / (1 + rs))
+df['rsi'] = rsi
+
+# 计算布林带指标
+df['mid'] = df['close'].rolling(window=20).mean()
+df['std'] = df['close'].rolling(window=20).std()
+df['upper'] = df['mid'] + 2 * df['std']
+df['lower'] = df['mid'] - 2 * df['std']
+
+# 计算MACD指标
+ema12 = df['close'].ewm(span=12, adjust=False).mean()
+ema26 = df['close'].ewm(span=26, adjust=False).mean()
+df['macd'] = ema12 - ema26
+df['signal'] = df['macd'].ewm(span=9, adjust=False).mean()
+
+# 设置止损价格，为布林带下轨和成本价的较小值
+df['stop_loss'] = df[['lower', 'cost_price']].max(axis=1)
+
+# 进行止损操作
+if current_price <= df.at[index, 'stop_loss']:
+    # 止损操作
+    print(f"Stop loss triggered at {current_price}")
+    break
+
+# 判断是否触发止盈操作
+if current_price >= df.at[index, 'upper'] or (df['macd'].iloc[-1] < df['signal'].iloc[-1] and df['macd'].iloc[-2] > df['signal'].iloc[-2]):
+    # 止盈操作
+    print(f"Take profit triggered at {current_price}")
+    break
+
+
+# 判断是否符合开仓条件
+if rsi_value < 30:
+    # 开仓操作
+    print(f"Buy triggered at {current_price}")
+    df.at[index, 'position'] = 1
+    df.at[index, 'cost_price'] = current_price
+    df.at[index, 'stop_loss'] = current_price - 2 * df.at[index, 'std']
